@@ -1,0 +1,11 @@
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env
+.env.testnet
+.env.ceres
+node_modules/**
+.DS_Store
+address-rewarded.json
+token.snapshot.*.json
