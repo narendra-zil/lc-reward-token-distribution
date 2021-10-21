@@ -1,0 +1,121 @@
+scilla_version 0
+
+import BoolUtils IntUtils PairUtils
+
+library LCReward
+
+let zil_address = 0x0000000000000000000000000000000000000000
+let zero = Uint128 0
+let one_msg =
+  fun (msg : Message) =>
+  let nil_msg = Nil {Message} in
+  Cons {Message} msg nil_msg
+
+contract LCReward
+(
+  initial_owner : ByStr20,
+  initial_lunr_token_address : ByStr20,
+  initial_max_rewards_limit : Uint128
+)
+
+field owner: ByStr20 = initial_owner
+field lunr_token_address: ByStr20 = initial_lunr_token_address
+field pending_owner : ByStr20 = zil_address
+field max_rewards_limit : Uint128 = initial_max_rewards_limit
+
+procedure EnsureSenderIsOwner(initiator : ByStr20)
+  current_owner <- owner;
+  is_owner = builtin eq initiator current_owner;
+  match is_owner with
+  | True =>
+  | False =>
+    e = { _exception : "InvalidSender"; initiator : initiator; current_owner : current_owner };
+    throw e
+  end
+end
+
+procedure EnsureAmountIsWithinLimit(amount : Uint128)
+    max_rewards <- max_rewards_limit;
+    is_amount_within_limit = uint128_le amount max_rewards;
+    match is_amount_within_limit with
+    | False =>
+        e = { _exception : "AmountExceededLimit"; max_rewards : max_rewards; amount : amount };
+        throw e
+    | True =>
+        (*Do nothing *)
+    end
+end
+
+
+procedure DoTransfer(input_pair: Pair (ByStr20) (Uint128))
+    to = let fst_to = @fst ByStr20 Uint128 in
+        fst_to input_pair;
+    amount = let snd_amt = @snd ByStr20 Uint128 in
+        snd_amt input_pair;
+
+    EnsureAmountIsWithinLimit amount;
+
+    token_address <- lunr_token_address;
+
+    msg_to_token =  {
+      _tag : "Transfer"; _recipient : token_address; _amount : zero;
+      to : to; amount : amount
+    };
+    msgs = one_msg msg_to_token;
+      send msgs;
+
+    e = { _eventname: "RewardsTransferred"; to : to; amount : amount };
+    event e
+end
+
+
+transition TransferOwnership(new_owner : ByStr20)
+  EnsureSenderIsOwner _sender;
+  existing_owner <- owner;
+  new_owner_is_existing_owner = builtin eq new_owner existing_owner;
+  match new_owner_is_existing_owner with
+  | True =>
+    e = { _exception : "ExistingOwner" };
+    throw e
+  | False =>
+    pending_owner := new_owner
+  end
+end
+
+transition AcceptPendingOwnership()
+  new_owner <- pending_owner;
+  sender_is_pending_owner = builtin eq _sender new_owner;
+  match sender_is_pending_owner with
+  | False =>
+    e = { _exception : "InvalidSender" };
+    throw e
+  | True =>
+    owner := new_owner;
+    pending_owner := zil_address; (* Reset back to 0x0 *)
+    e = { _eventname: "OwnershipTransferred"; owner : new_owner };
+    event e
+  end
+end
+
+transition BatchRewardsTransfer( to_list: List (Pair (ByStr20) (Uint128)) )
+  EnsureSenderIsOwner _sender;
+  forall to_list DoTransfer;
+
+  msg_to_sender = {_tag : "BatchTransferSuccessCallBack"; _recipient : _sender; _amount : zero;
+                  sender : _sender };
+  msg = one_msg msg_to_sender;
+  send msg
+end
+
+transition UpdateTokenAddress(new_address : ByStr20)
+    EnsureSenderIsOwner _sender;
+    lunr_token_address := new_address;
+    e = { _eventname: "LunrAddressUpdated"; lunr_token_address : new_address };
+    event e
+end
+
+transition RecipientAcceptTransfer(sender : ByStr20, recipient : ByStr20, amount : Uint128)
+end
+
+transition TransferSuccessCallBack(sender : ByStr20, recipient : ByStr20, amount : Uint128)
+end

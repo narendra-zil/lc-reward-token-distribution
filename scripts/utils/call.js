@@ -216,8 +216,99 @@ const getContract = async (privateKey, contractHash) => {
   useKey(privateKey)
   return await zilliqa.contracts.at(contractHash)
 }
+
+async function callContract(
+  privateKey,
+  contract,
+  transition,
+  args,
+  zilsToSend = 0
+) {
+  // Check for key
+  if (!privateKey || privateKey === '') {
+    throw new Error('No private key was provided!')
+  }
+  useKey(privateKey)
+
+  const minGasPrice = await zilliqa.blockchain.getMinimumGasPrice()
+
+  return await contract.call(
+    transition,
+    args,
+    {
+      version: TESTNET_VERSION,
+      amount: units.toQa(zilsToSend, units.Units.Zil),
+      gasPrice: new BN(minGasPrice.result),
+      gasLimit: Long.fromNumber(25000)
+    },
+    33,
+    1000,
+    true
+  )
+}
+
 const useFungibleToken = async (privateKey, tokenAddress) => {
   return await getContract(privateKey, tokenAddress)
+}
+
+const useRewardsContract = async (privateKey, contractAddress) => {
+  return await getContract(privateKey, contractAddress)
+}
+
+async function setupBalancesOnAccounts() {
+  let rewardOwnerBalance = await getBalance(
+    getAddressFromPrivateKey(process.env.REWARD_OWNER_PRIVATE_KEY)
+  )
+  rewardOwnerBalance /= 1000000000000
+  if (rewardOwnerBalance < 1000) {
+    await sendZil(
+      process.env.MASTER_PRIVATE_KEY,
+      getAddressFromPrivateKey(process.env.REWARD_OWNER_PRIVATE_KEY),
+      1000,
+      Long.fromNumber(50)
+    )
+  }
+
+  let tokenOwnerBalance = await getBalance(
+    getAddressFromPrivateKey(process.env.TOKEN_OWNER_PRIVATE_KEY)
+  )
+  tokenOwnerBalance /= 1000000000000
+  if (tokenOwnerBalance < 1000) {
+    await sendZil(
+      process.env.MASTER_PRIVATE_KEY,
+      getAddressFromPrivateKey(process.env.TOKEN_OWNER_PRIVATE_KEY),
+      1000,
+      Long.fromNumber(50)
+    )
+  }
+}
+
+async function clearBalancesOnAccounts() {
+  let rewardOwnerBalanceAfter = await getBalance(
+    getAddressFromPrivateKey(process.env.REWARD_OWNER_PRIVATE_KEY)
+  )
+  rewardOwnerBalanceAfter /= 1000000000000
+  if (rewardOwnerBalanceAfter > 1) {
+    await sendZil(
+      process.env.REWARD_OWNER_PRIVATE_KEY,
+      getAddressFromPrivateKey(process.env.MASTER_PRIVATE_KEY),
+      rewardOwnerBalanceAfter - 1,
+      Long.fromNumber(50)
+    )
+  }
+
+  let tokenOwnerBalanceAfter = await getBalance(
+    getAddressFromPrivateKey(process.env.TOKEN_OWNER_PRIVATE_KEY)
+  )
+  tokenOwnerBalanceAfter /= 1000000000000
+  if (tokenOwnerBalanceAfter > 1) {
+    await sendZil(
+      process.env.TOKEN_OWNER_PRIVATE_KEY,
+      getAddressFromPrivateKey(process.env.MASTER_PRIVATE_KEY),
+      tokenOwnerBalanceAfter - 1,
+      Long.fromNumber(50)
+    )
+  }
 }
 
 exports.getContractState = getContractState
@@ -227,3 +318,7 @@ exports.getState = getState
 exports.getBalance = getBalance
 exports.sendZil = sendZil
 exports.useFungibleToken = useFungibleToken
+exports.useRewardsContract = useRewardsContract
+exports.callContract = callContract
+exports.setupBalancesOnAccounts = setupBalancesOnAccounts
+exports.clearBalancesOnAccounts = clearBalancesOnAccounts

@@ -27,12 +27,12 @@ const sendZilToUser = async (privateKey, recipientAddress, sendingAmount) => {
 
 ;(async () => {
   try {
-    const masterAddress = getAddressFromPrivateKey(
+    /*(const masterAddress = getAddressFromPrivateKey(
       process.env.MASTER_PRIVATE_KEY
     )
     const masterBalance = await getBalance(masterAddress)
     console.log(`Master account balance : ${masterBalance}`)
-
+      */
     // await sendZilToUser(
     //   process.env.GENESIS_PRIVATE_KEY,
     //   getAddressFromPrivateKey(process.env.MASTER_PRIVATE_KEY),

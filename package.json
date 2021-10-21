@@ -4,9 +4,9 @@
   "main": "index.js",
   "scripts": {
     "test": "jest -i",
-    "lint": "npx eslint scripts",
+    "lint": "npx eslint scripts tests",
     "lint:fix": "npm run lint --fix",
-    "prettier": "npx prettier scripts --check",
+    "prettier": "npx prettier scripts tests --check",
     "prettier:fix": "npm run prettier -- --write"
   },
   "author": "",
