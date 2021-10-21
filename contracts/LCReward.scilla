@@ -4,7 +4,6 @@ import BoolUtils IntUtils PairUtils
 
 library LCReward
 
-let zil_address = 0x0000000000000000000000000000000000000000
 let zero = Uint128 0
 let one_msg =
   fun (msg : Message) =>
@@ -20,7 +19,6 @@ contract LCReward
 
 field owner: ByStr20 = initial_owner
 field lunr_token_address: ByStr20 = initial_lunr_token_address
-field pending_owner : ByStr20 = zil_address
 field max_rewards_limit : Uint128 = initial_max_rewards_limit
 
 procedure EnsureSenderIsOwner(initiator : ByStr20)
@@ -66,35 +64,6 @@ procedure DoTransfer(input_pair: Pair (ByStr20) (Uint128))
 
     e = { _eventname: "RewardsTransferred"; to : to; amount : amount };
     event e
-end
-
-
-transition TransferOwnership(new_owner : ByStr20)
-  EnsureSenderIsOwner _sender;
-  existing_owner <- owner;
-  new_owner_is_existing_owner = builtin eq new_owner existing_owner;
-  match new_owner_is_existing_owner with
-  | True =>
-    e = { _exception : "ExistingOwner" };
-    throw e
-  | False =>
-    pending_owner := new_owner
-  end
-end
-
-transition AcceptPendingOwnership()
-  new_owner <- pending_owner;
-  sender_is_pending_owner = builtin eq _sender new_owner;
-  match sender_is_pending_owner with
-  | False =>
-    e = { _exception : "InvalidSender" };
-    throw e
-  | True =>
-    owner := new_owner;
-    pending_owner := zil_address; (* Reset back to 0x0 *)
-    e = { _eventname: "OwnershipTransferred"; owner : new_owner };
-    event e
-  end
 end
 
 transition BatchRewardsTransfer( to_list: List (Pair (ByStr20) (Uint128)) )
